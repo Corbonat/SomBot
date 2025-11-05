@@ -12,11 +12,8 @@ build/
 *.spec
 
 # Environments
-.env
-.env.*
 .venv/
 venv/
-env/
 
 # Tools caches
 .pytest_cache/
