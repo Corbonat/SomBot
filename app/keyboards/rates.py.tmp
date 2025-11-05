@@ -1,0 +1,67 @@
+﻿from __future__ import annotations
+
+from aiogram.types import InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+from app.keyboards.common import nav_row
+from app.rates.models import BybitMode, GeoOption, RateMethod
+from app.utils.texts import get_text
+
+
+def build_sources_menu(locale: str = "ru") -> InlineKeyboardMarkup:
+    texts = get_text("rates.sources", locale)
+    builder = InlineKeyboardBuilder()
+    builder.button(text=texts["rapira"], callback_data="rates:rapira:show")
+    builder.button(text=texts["bybit"], callback_data="rates:bybit:menu")
+    builder.button(text=texts["grinex"], callback_data="rates:grinex:show")
+    builder.adjust(1)
+    builder.attach(nav_row(back_cb="nav:home", home_cb="nav:home"))
+    return builder.as_markup()
+
+
+def build_rate_actions(callback_prefix: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🔄 Обновить", callback_data=f"{callback_prefix}:refresh")
+    builder.adjust(1)
+    builder.attach(nav_row(back_cb="rates", home_cb="nav:home"))
+    return builder.as_markup()
+
+
+def build_bybit_controls(
+    method: RateMethod,
+    geo: GeoOption,
+    mode: BybitMode,
+    locale: str = "ru",
+) -> InlineKeyboardMarkup:
+    texts = get_text("rates.bybit", locale)
+    builder = InlineKeyboardBuilder()
+
+    def _label(choice: str, value: str) -> str:
+        return f"✔️ {texts['methods'][choice]}" if value == choice else texts['methods'][choice]
+
+    builder.button(text=_label("mid", method.value), callback_data="rates:bybit:method:mid")
+    builder.button(text=_label("best", method.value), callback_data="rates:bybit:method:best")
+    builder.button(text=_label("vwap", method.value), callback_data="rates:bybit:method:vwap")
+
+    builder.button(
+        text=texts["mode"].format(mode=mode.value), callback_data="rates:bybit:mode:cycle"
+    )
+
+    geo_texts = texts["geo"]
+    builder.button(
+        text=("✔️ " + geo_texts["rio"]) if geo.value == "rio" else geo_texts["rio"],
+        callback_data="rates:bybit:geo:rio",
+    )
+    builder.button(
+        text=("✔️ " + geo_texts["berlin"]) if geo.value == "berlin" else geo_texts["berlin"],
+        callback_data="rates:bybit:geo:berlin",
+    )
+    builder.button(
+        text=("✔️ " + geo_texts["off"]) if geo.value == "none" else geo_texts["off"],
+        callback_data="rates:bybit:geo:none",
+    )
+
+    builder.adjust(3, 1, 3)
+    builder.attach(nav_row(back_cb="rates", home_cb="nav:home"))
+    return builder.as_markup()
+

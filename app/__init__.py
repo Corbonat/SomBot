@@ -1,0 +1,1 @@
+﻿"""Main Varshеr bot package."""

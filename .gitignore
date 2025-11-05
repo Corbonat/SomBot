@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.spec
+
+# Environments
+.env
+.env.*
+.venv/
+venv/
+env/
+
+# Tools caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+
+# IDE/editor
+.idea/
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node (if any frontend)
+node_modules/
+
+# Project-specific
+SomTGBot.rar
+
+# Docker
+**/.docker/
+**/*.local.yml
+

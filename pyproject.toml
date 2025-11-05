@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "varsher-bot"
+version = "0.1.0"
+description = "Varshers Telegram bot ecosystem"
+readme = "README.md"
+authors = [{ name = "Varshers Team" }]
+requires-python = ">=3.11"
+dependencies = [
+    "aiogram>=3.4.1,<4.0",
+    "httpx>=0.27",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.1",
+    "redis>=5.0",
+    "asyncpg>=0.29",
+    "SQLAlchemy>=2.0",
+    "alembic>=1.12",
+    "structlog>=23.1",
+    "orjson>=3.9",
+    "apscheduler>=3.10",
+    "python-dateutil>=2.8",
+    "tenacity>=8.2",
+    "pyyaml>=6.0",
+    "cryptography>=41.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "pytest-mock>=3.11",
+    "freezegun>=1.2",
+    "ruff>=0.2",
+    "mypy>=1.8",
+    "types-redis",
+    "types-python-dateutil"
+]
+
+[project.scripts]
+varsher-bot = "app.main:main"
+predskaz-bot = "pred.main:main"
+varsher-worker = "worker.main:main"
+
+[tool.setuptools.packages.find]
+include = ["app*", "pred*", "worker*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["app", "pred", "worker"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+mypy_path = "app;pred;worker"
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "UP", "B", "ANN"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["ANN"]
