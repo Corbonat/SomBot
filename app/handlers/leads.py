@@ -8,6 +8,7 @@ from app.fsm.lead import LeadFormState
 from app.keyboards.lead import build_lead_confirm
 from app.services.leads.service import LeadRequest, LeadService
 from app.utils.texts import get_text
+from app.utils.telegram import edit_text_or_caption
 
 router = Router(name="leads")
 
@@ -16,7 +17,7 @@ router = Router(name="leads")
 async def start_lead_form(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await state.set_state(LeadFormState.contact)
-    await callback.message.edit_text(get_text("lead.form.contact"))
+    await edit_text_or_caption(callback.message, get_text("lead.form.contact"))
     await callback.answer()
 
 
@@ -50,7 +51,7 @@ async def process_requisites(message: Message, state: FSMContext) -> None:
 @router.callback_query(lambda c: c.data == "lead:form:restart")
 async def restart_form(callback: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(LeadFormState.contact)
-    await callback.message.edit_text(get_text("lead.form.contact"))
+    await edit_text_or_caption(callback.message, get_text("lead.form.contact"))
     await callback.answer()
 
 
@@ -65,6 +66,6 @@ async def submit_lead(callback: CallbackQuery, state: FSMContext, lead_service: 
         consent=True,
     )
     lead_id = await lead_service.create_lead(payload)
-    await callback.message.edit_text(get_text("lead.form.done").format(id=lead_id))
+    await edit_text_or_caption(callback.message, get_text("lead.form.done").format(id=lead_id))
     await state.clear()
     await callback.answer()

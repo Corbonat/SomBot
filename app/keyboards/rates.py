@@ -52,30 +52,8 @@ def build_bybit_controls(
         text=texts["mode"].format(mode=mode.value), callback_data="rates:bybit:mode:cycle"
     )
 
-    geo_texts = texts["geo"]
-    geo_key_map = {
-        GeoOption.RIO: "rio",
-        GeoOption.BERLIN: "berlin",
-        GeoOption.NONE: "off",
-    }
-
-    def _geo_label(option: GeoOption) -> str:
-        key = geo_key_map[option]
-        label = (
-            geo_texts.get(key)
-            or geo_texts.get(option.value)
-            or (geo_texts.get(False) if option == GeoOption.NONE else None)
-        )
-        # Support legacy YAML where "off" was parsed as boolean False
-        label = label or option.value
-        return f"{selected_prefix}{label}" if geo == option else label
-
-    for option in (GeoOption.RIO, GeoOption.BERLIN, GeoOption.NONE):
-        builder.button(
-            text=_geo_label(option), callback_data=f"rates:bybit:geo:{option.value}"
-        )
-
-    builder.adjust(3, 1, 3)
+    # Removed GEO buttons
+    builder.adjust(3, 1)
     builder.attach(nav_row(back_cb="rates", home_cb="nav:home"))
     return builder.as_markup()
 

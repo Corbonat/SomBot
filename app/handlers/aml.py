@@ -9,45 +9,48 @@ from app.fsm.aml import AMLCheckState
 from app.keyboards.aml import build_aml_menu, build_aml_result
 from app.services.aml.service import AMLService
 from app.utils.texts import get_text
+from app.utils.telegram import edit_text_or_caption
 
 router = Router(name="aml")
 
 
 @router.callback_query(lambda c: c.data == "aml")
 async def open_aml_menu(callback: CallbackQuery) -> None:
-    await callback.message.edit_text(get_text("aml.title"), reply_markup=build_aml_menu())
+    await edit_text_or_caption(callback.message, get_text("aml.title"), build_aml_menu())
     await callback.answer()
 
 
 @router.callback_query(lambda c: c.data == "aml:policy")
 async def show_policy(callback: CallbackQuery) -> None:
     from app.keyboards.common import nav_row
-
-    await callback.message.edit_text(
-        get_text("aml.policy"), reply_markup=nav_row().as_markup()
-    )
+    await edit_text_or_caption(callback.message, get_text("aml.policy"), nav_row().as_markup())
     await callback.answer()
 
 
 @router.callback_query(lambda c: c.data == "aml:check:start")
 async def aml_start(callback: CallbackQuery, state: FSMContext) -> None:
+    from app.keyboards.common import nav_row
     await state.clear()
     await state.set_state(AMLCheckState.input_address)
-    await callback.message.edit_text(get_text("aml.form.prompt"))
+    await edit_text_or_caption(callback.message, get_text("aml.form.prompt"), nav_row().as_markup())
     await callback.answer()
 
 
 @router.message(AMLCheckState.input_address)
 async def aml_process_address(message: Message, state: FSMContext, aml_service: AMLService) -> None:
+    from app.keyboards.common import nav_row
     address = message.text.strip()
     await state.set_state(AMLCheckState.validating)
-    await message.answer(get_text("aml.form.validating"))
+    await message.answer(get_text("aml.form.validating"), reply_markup=nav_row().as_markup())
     try:
         result = await aml_service.check_address(address)
     except Exception as exc:
         # Show error to the user and return to input state
         await state.set_state(AMLCheckState.input_address)
-        await message.answer(f"Ошибка AML: {exc}\nВведите адрес ещё раз")
+        await message.answer(
+            f"Ошибка AML: {exc}\nВведите адрес ещё раз",
+            reply_markup=nav_row().as_markup(),
+        )
         return
     await state.update_data(result=result)
     await state.set_state(AMLCheckState.result)

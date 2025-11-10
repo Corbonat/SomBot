@@ -6,6 +6,7 @@ import httpx
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.types import BotCommand, BotCommandScopeDefault
 from aiogram.fsm.storage.redis import RedisStorage
 
 from app.core.bot import create_bot, create_dispatcher, setup_dispatcher, shutdown_bot
@@ -88,6 +89,20 @@ async def run() -> None:
     setup_logging()
     bot = create_bot(settings.bot_token.get_secret_value())
     bot.default = DefaultBotProperties(parse_mode=ParseMode.HTML)
+
+    # Register basic commands so they appear in the client menu (/start visible)
+    try:
+        await bot.set_my_commands(
+            commands=[
+                BotCommand(command="start", description="Запуск бота"),
+                BotCommand(command="help", description="Помощь"),
+            ],
+            scope=BotCommandScopeDefault(),
+            language_code="ru",
+        )
+    except Exception:
+        # Non-fatal if command registration fails
+        pass
 
     dp, _, _, _ = await _build_dispatcher(settings)
 

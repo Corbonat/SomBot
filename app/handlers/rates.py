@@ -14,6 +14,7 @@ from app.rates.models import BybitMode, GeoOption, RateMethod, RateQuery, RateSo
 from app.rates.providers.bybit import BybitProvider
 from app.rates.service import RateService
 from app.utils.formatting import format_all_rates, format_rate
+from app.utils.telegram import edit_text_or_caption
 from app.utils.texts import get_text
 
 router = Router(name="rates")
@@ -161,9 +162,7 @@ async def open_rates_menu(
     settings: Settings,
 ) -> None:
     text = await _render_all_rates(rate_service, settings)
-    await callback.message.edit_text(
-        text, reply_markup=build_sources_menu()
-    )
+    await edit_text_or_caption(callback.message, text, build_sources_menu())
     await callback.answer()
 
 
@@ -200,7 +199,7 @@ async def _show_bybit_card(
         geo=query.geo,
         mode=query.mode,
     )
-    await callback.message.edit_text(text, reply_markup=keyboard)
+    await edit_text_or_caption(callback.message, text, keyboard)
     await callback.answer()
 
 
@@ -271,9 +270,7 @@ async def rapira_actions(
         mode=BybitMode.ORDERBOOK,
     )
     text = await _render_rate(query, rate_service, settings, force=force)
-    await callback.message.edit_text(
-        text, reply_markup=build_rate_actions("rates:rapira")
-    )
+    await edit_text_or_caption(callback.message, text, build_rate_actions("rates:rapira"))
     await callback.answer()
 
 
@@ -291,8 +288,6 @@ async def grinex_actions(
         mode=BybitMode.ORDERBOOK,
     )
     text = await _render_rate(query, rate_service, settings, force=force)
-    await callback.message.edit_text(
-        text, reply_markup=build_rate_actions("rates:grinex")
-    )
+    await edit_text_or_caption(callback.message, text, build_rate_actions("rates:grinex"))
     await callback.answer()
 
