@@ -2,9 +2,16 @@
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional
+from typing import NamedTuple, Optional
 
 from app.rates.models import RatePayload
+
+
+class BidAsk(NamedTuple):
+    """Container for buy/sell prices (bid is sell, ask is buy)."""
+
+    bid: Decimal
+    ask: Decimal
 
 
 def format_rate(payload: RatePayload) -> str:
@@ -32,21 +39,43 @@ def format_rate(payload: RatePayload) -> str:
 def format_all_rates(
     grinex_rate: Optional[RatePayload],
     rapira_rate: Optional[RatePayload],
-    bybit_bid: Optional[Decimal],
-    bybit_ask: Optional[Decimal],
+    mosca_pair: Optional[BidAsk],
+    bybit_mid: Optional[RatePayload],
+    bybit_p2p: Optional[BidAsk],
 ) -> str:
-    """Форматирует все курсы в единое сообщение."""
-    lines = ["USDT/RUB:\n\n"]
-    
+    """Формирует общий дашборд курсов в требуемом формате."""
+    lines = ["Общий Dashboard", "USDT/RUB", ""]
+
     if grinex_rate:
-        lines.append(f"🌙 Grinex\n{grinex_rate.value:.2f}₽\n\n")
-    
+        lines.append(f"📊 Grinex — {grinex_rate.value:.2f}₽")
+        lines.append("")
+
     if rapira_rate:
-        lines.append(f"🌙 Rapira\n{rapira_rate.value:.2f}₽\n\n")
-    
-    if bybit_bid is not None and bybit_ask is not None:
-        lines.append(
-            f"🌙 Mosca\nкупить USDT — {bybit_ask:.1f}\nпродать USDT — {bybit_bid:.1f}"
-        )
-    
-    return "\n".join(lines)
+        lines.append(f"📊 Rapira — {rapira_rate.value:.2f}₽")
+        lines.append("")
+
+    if mosca_pair:
+        lines.append("📊 Mosca")
+        lines.append(f"купить USDT — {mosca_pair.ask:.2f}")
+        lines.append(f"продать USDT — {mosca_pair.bid:.2f}")
+        lines.append("")
+
+    if bybit_mid or mosca_pair:
+        lines.append("📊 Bybit (средний)")
+        if bybit_mid:
+            lines.append(f"Купить USDT — {bybit_mid.value:.2f}")
+            lines.append(f"Продать USDT — {bybit_mid.value:.2f}")
+        else:
+            # Fallback to spot bid/ask if средний курс недоступен
+            lines.append(f"Купить USDT — {mosca_pair.ask:.2f}" if mosca_pair else "Купить USDT — —")
+            lines.append(f"Продать USDT — {mosca_pair.bid:.2f}" if mosca_pair else "Продать USDT — —")
+        lines.append("")
+
+    lines.append("📊 Bybit (последний курс P2P стакана)")
+    if bybit_p2p:
+        lines.append(f"Купить USDT — {bybit_p2p.ask:.2f}")
+        lines.append(f"Продать USDT — {bybit_p2p.bid:.2f}")
+    else:
+        lines.append("Данные пока отсутствуют (нужен запрос к P2P API).")
+
+    return "\n".join(lines).strip()

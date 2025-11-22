@@ -13,7 +13,7 @@ from app.keyboards.rates import build_bybit_controls, build_rate_actions, build_
 from app.rates.models import BybitMode, GeoOption, RateMethod, RateQuery, RateSource
 from app.rates.providers.bybit import BybitProvider
 from app.rates.service import RateService
-from app.utils.formatting import format_all_rates, format_rate
+from app.utils.formatting import BidAsk, format_all_rates, format_rate
 from app.utils.telegram import edit_text_or_caption
 from app.utils.texts import get_text
 
@@ -103,13 +103,12 @@ async def _render_all_rates(
     force: bool = False,
 ) -> str:
     """Получает и форматирует все курсы вместе."""
-    from decimal import Decimal
-    
     grinex_rate = None
     rapira_rate = None
-    bybit_bid = None
-    bybit_ask = None
-    
+    mosca_pair: BidAsk | None = None
+    bybit_mid = None
+    bybit_p2p: BidAsk | None = None
+
     # Получаем курсы Grinex
     try:
         grinex_query = RateQuery(
@@ -138,6 +137,20 @@ async def _render_all_rates(
     except Exception:
         pass
     
+    # Получаем средний курс Bybit (для блока "Bybit (средний)")
+    try:
+        bybit_mid_query = RateQuery(
+            source=RateSource.BYBIT,
+            method=RateMethod.MID,
+            geo=GeoOption(settings.default_geo),
+            mode=BybitMode(settings.bybit_mode),
+        )
+        bybit_mid_payload = await rate_service.get_rate(bybit_mid_query, force=force)
+        ttl = _ttl_for_source(settings, RateSource.BYBIT)
+        bybit_mid = RateService.mark_stale(bybit_mid_payload, ttl=ttl, warn_age=settings.rate_warn_age_sec)
+    except Exception:
+        pass
+    
     # Получаем bid и ask от Bybit
     try:
         bybit_query = RateQuery(
@@ -148,11 +161,12 @@ async def _render_all_rates(
         )
         provider = rate_service.providers.get(RateSource.BYBIT)
         if provider and isinstance(provider, BybitProvider):
-            bybit_bid, bybit_ask = await provider.fetch_bid_ask(bybit_query)
+            bid, ask = await provider.fetch_bid_ask(bybit_query)
+            mosca_pair = BidAsk(bid=bid, ask=ask)
     except Exception:
         pass
     
-    return format_all_rates(grinex_rate, rapira_rate, bybit_bid, bybit_ask)
+    return format_all_rates(grinex_rate, rapira_rate, mosca_pair, bybit_mid, bybit_p2p)
 
 
 @router.callback_query(lambda c: c.data == "rates")
@@ -290,4 +304,3 @@ async def grinex_actions(
     text = await _render_rate(query, rate_service, settings, force=force)
     await edit_text_or_caption(callback.message, text, build_rate_actions("rates:grinex"))
     await callback.answer()
-
