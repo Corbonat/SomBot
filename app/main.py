@@ -90,19 +90,6 @@ async def run() -> None:
     bot = create_bot(settings.bot_token.get_secret_value())
     bot.default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 
-    # Register basic commands so they appear in the client menu (/start visible)
-    try:
-        await bot.set_my_commands(
-            commands=[
-                BotCommand(command="start", description="Запуск бота"),
-                BotCommand(command="help", description="Помощь"),
-            ],
-            scope=BotCommandScopeDefault(),
-            language_code="ru",
-        )
-    except Exception:
-        # Non-fatal if command registration fails
-        pass
 
     dp, _, _, _ = await _build_dispatcher(settings)
 

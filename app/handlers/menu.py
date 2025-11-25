@@ -4,15 +4,18 @@ from aiogram import Router
 from aiogram.types import CallbackQuery, FSInputFile
 from pathlib import Path
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from redis.asyncio import Redis
+from typing import TYPE_CHECKING
 
 from app.keyboards.common import nav_row
 from app.keyboards.lead import build_lead_menu
 from app.keyboards.main_menu import build_main_menu
 from app.keyboards.rates import build_sources_menu
-from app.utils.main_photo import set_main_photo
 from app.utils.texts import get_text
-from app.utils.telegram import edit_text_or_caption
+from app.utils.telegram import edit_text_or_caption, format_with_preview
+
+if TYPE_CHECKING:
+    from app.core.config import Settings
+    from app.rates.service import RateService
 
 router = Router(name="menu")
 
@@ -21,37 +24,69 @@ async def _send_guide(
     callback: CallbackQuery,
     text: str,
     file_path: str | None = None,
-    back_cb: str = "nav:back",
+    back_cb: str = "nav:guides",
+    preview_url: str | None = None,
+    with_preview: bool = True,
 ) -> None:
     """
     Унифицированная отправка гайда:
-    - редактирует текущее сообщение (или подпись) с HTML-текстом и кнопками «Назад» / «Домой»;
-    - при наличии файла отправляет его отдельным сообщением (фото или документ).
+    - если есть файл, удаляет старое сообщение и отправляет файл/документ с caption и кнопками;
+    - иначе просто обновляет текст текущего сообщения.
     """
-    # Навигация: «Назад» и «Домой»
     kb = nav_row(back_cb=back_cb).as_markup()
 
-    # Если есть файл — пытаемся отправить ОДНО сообщение: файл + caption.
-    # Предыдущее сообщение с кнопками удаляем, чтобы не копились «хвосты».
     if file_path:
         path = Path(file_path)
-        if path.exists():
+        if path.exists() and path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
             try:
                 await callback.message.delete()
             except Exception:
                 ...
             fs = FSInputFile(path.as_posix())
-            lower = path.suffix.lower()
-            if lower in {".png", ".jpg", ".jpeg", ".webp"}:
-                await callback.message.answer_photo(fs, caption=text, reply_markup=kb)
-            else:
-                await callback.message.answer_document(fs, caption=text, reply_markup=kb)
+            caption = format_with_preview(text, preview_url, with_preview)
+            await callback.message.answer_document(fs, caption=caption, reply_markup=kb)
             await callback.answer()
             return
 
-    # Если файла нет или путь неверный — просто обновляем текст с кнопками
-    await edit_text_or_caption(callback.message, text, kb)
+    await edit_text_or_caption(
+        callback.message,
+        text,
+        kb,
+        replace_media=True,
+        preview_url=preview_url,
+        with_preview=with_preview,
+    )
     await callback.answer()
+
+
+async def _render_guides_list(callback: CallbackQuery, replace_media: bool = False) -> None:
+    builder = InlineKeyboardBuilder()
+    guides = get_text("guides.items")
+    for key, item in guides.items():
+        builder.button(text=item["title"], callback_data=f"guides:{key}")
+    builder.adjust(1)
+    builder.attach(nav_row())
+    await edit_text_or_caption(
+        callback.message,
+        get_text("guides.title"),
+        builder.as_markup(),
+        replace_media=replace_media,
+    )
+
+
+async def _render_drops_menu(callback: CallbackQuery, replace_media: bool = False) -> None:
+    drops_items = get_text("guides.items.drops.items")
+    builder = InlineKeyboardBuilder()
+    for sub_key, item in drops_items.items():
+        builder.button(text=item["title"], callback_data=f"guides:drops:{sub_key}")
+    builder.adjust(1)
+    builder.attach(nav_row(back_cb="nav:guides"))
+    await edit_text_or_caption(
+        callback.message,
+        "📬 Дроповодство",
+        builder.as_markup(),
+        replace_media=replace_media,
+    )
 
 
 @router.callback_query(lambda c: c.data == "info:about")
@@ -78,7 +113,7 @@ async def open_education(callback: CallbackQuery) -> None:
     builder.button(text=get_text("education.buttons.academy"), callback_data="education:academy")
     builder.button(text=get_text("education.buttons.pin"), callback_data="education:pin")
     builder.adjust(1)
-    builder.attach(nav_row())
+    builder.attach(nav_row(back_cb="nav:home", home_cb="nav:home"))
     await edit_text_or_caption(callback.message, get_text("education.title"), builder.as_markup())
     await callback.answer()
 
@@ -96,14 +131,7 @@ async def open_hacker(callback: CallbackQuery) -> None:
 
 @router.callback_query(lambda c: c.data == "guides")
 async def open_guides(callback: CallbackQuery) -> None:
-    builder = InlineKeyboardBuilder()
-    guides = get_text("guides.items")
-    for key, item in guides.items():
-        builder.button(text=item["title"], callback_data=f"guides:{key}")
-    builder.adjust(1)
-    # Из списка гайдов «Назад» ведет в главное меню
-    builder.attach(nav_row())
-    await edit_text_or_caption(callback.message, get_text("guides.title"), builder.as_markup())
+    await _render_guides_list(callback)
     await callback.answer()
 
 
@@ -116,28 +144,7 @@ async def open_aml(callback: CallbackQuery) -> None:
 
 @router.callback_query(lambda c: c.data == "lead")
 async def open_lead(callback: CallbackQuery) -> None:
-    contact = str(get_text("links.contact"))
-    handle = contact
-    try:
-        # Extract @username from typical Telegram URL formats
-        if contact.startswith("http://") or contact.startswith("https://"):
-            # Expected like https://t.me/username
-            from urllib.parse import urlparse
-            parsed = urlparse(contact)
-            if parsed.netloc.endswith("t.me") and parsed.path:
-                username = parsed.path.strip("/")
-                if username:
-                    handle = f"@{username}"
-        elif contact.startswith("tg://"):
-            # Fallback to showing raw tg link
-            handle = contact
-        elif not contact.startswith("@"):
-            # If it's something else (e.g., plain username), normalize
-            handle = f"@{contact}"
-    except Exception:
-        handle = contact
-
-    text = f"Напишите сюда ({handle}) чтобы получить персонализированное предложение"
+    text = get_text("lead.promo")
     await edit_text_or_caption(callback.message, text, build_lead_menu())
     await callback.answer()
 
@@ -159,7 +166,7 @@ async def education_pin_info(callback: CallbackQuery) -> None:
     await callback.answer()
 
 @router.callback_query(lambda c: c.data.startswith("guides:"))
-async def show_guide_item(callback: CallbackQuery, redis: Redis) -> None:
+async def show_guide_item(callback: CallbackQuery) -> None:
     parts = callback.data.split(":")
     # ожидаем форматы:
     # guides:<key>
@@ -174,17 +181,7 @@ async def show_guide_item(callback: CallbackQuery, redis: Redis) -> None:
     if main_key == "drops":
         # Открытие подменю: guides:drops
         if len(parts) == 2:
-            drops_items = get_text("guides.items.drops.items")
-            builder = InlineKeyboardBuilder()
-            for sub_key, item in drops_items.items():
-                builder.button(
-                    text=item["title"],
-                    callback_data=f"guides:drops:{sub_key}",
-                )
-            builder.adjust(1)
-            # Внутри дроповодства «Назад» ведет на список всех гайдов
-            builder.attach(nav_row(back_cb="nav:guides"))
-            await edit_text_or_caption(callback.message, "📬 Дроповодство", builder.as_markup())
+            await _render_drops_menu(callback, replace_media=True)
             await callback.answer()
             return
 
@@ -192,7 +189,8 @@ async def show_guide_item(callback: CallbackQuery, redis: Redis) -> None:
         sub_key = parts[2]
         drops_items = get_text("guides.items.drops.items")
         if sub_key in drops_items:
-            # Берем HTML-текст из ru.yml и возвращаемся «Назад» к меню дроповодства
+
+            # Для остальных — берем HTML-текст из ru.yml
             try:
                 text = get_text(f"guides.items.drops.items.{sub_key}.text")
             except KeyError:
@@ -204,7 +202,7 @@ async def show_guide_item(callback: CallbackQuery, redis: Redis) -> None:
         await callback.answer("Раздел не найден", show_alert=True)
         return
 
-    # Обычные гайды (первые три + Альфа)
+        # Обычные гайды (первые три + Альфа)
     items = get_text("guides.items")
     if main_key in items:
         # Пытаемся взять HTML‑текст и путь к файлу из ru.yml
@@ -218,60 +216,41 @@ async def show_guide_item(callback: CallbackQuery, redis: Redis) -> None:
         except KeyError:
             file_path = None
 
-        # Для гайда по прогреву карт дополнительно меняем основную картинку
-        if main_key == "warmup_2025":
-            await set_main_photo(
-                redis,
-                callback.message.bot,
-                callback.message.chat.id,
-                "assets/guides/warmup_2025/photo_2025-11-21_15-33-35.jpg",
-            )
+        try:
+            preview_url = get_text(f"guides.items.{main_key}.preview_url")
+        except KeyError:
+            preview_url = None
 
-        # Кнопка «Назад» из гайда ведет обратно к списку гайдов
-        await _send_guide(callback, text, file_path, back_cb="nav:guides")
+        await _send_guide(
+            callback,
+            text,
+            file_path,
+            back_cb="nav:guides",
+            preview_url=preview_url,
+        )
     else:
         await callback.answer("Раздел не найден", show_alert=True)
 
 
 @router.callback_query(lambda c: c.data == "nav:back")
-async def nav_back(callback: CallbackQuery, redis: Redis) -> None:
-    # При «Назад» возвращаем главную картинку и главное меню
-    await set_main_photo(redis, callback.message.bot, callback.message.chat.id, "assets/images/main.jpg")
-    await edit_text_or_caption(callback.message, get_text("menu.start"), build_main_menu())
+async def nav_back(callback: CallbackQuery) -> None:
+    await edit_text_or_caption(
+        callback.message,
+        get_text("menu.start"),
+        build_main_menu(),
+        replace_media=True,
+    )
     await callback.answer()
 
 
 @router.callback_query(lambda c: c.data == "nav:guides")
-async def nav_guides(callback: CallbackQuery, redis: Redis) -> None:
-    """Назад из гайдов: восстановить основную картинку и показать список гайдов."""
-    await set_main_photo(redis, callback.message.bot, callback.message.chat.id, "assets/images/main.jpg")
-
-    builder = InlineKeyboardBuilder()
-    guides = get_text("guides.items")
-    for key, item in guides.items():
-        builder.button(text=item["title"], callback_data=f"guides:{key}")
-    builder.adjust(1)
-    # Из списка гайдов «Назад» ведет в главное меню
-    builder.attach(nav_row())
-    await edit_text_or_caption(callback.message, get_text("guides.title"), builder.as_markup())
+async def nav_guides(callback: CallbackQuery) -> None:
+    await _render_guides_list(callback, replace_media=True)
     await callback.answer()
 
 
 @router.callback_query(lambda c: c.data == "nav:drops")
-async def nav_drops(callback: CallbackQuery, redis: Redis) -> None:
-    """Назад из внутренних гайдов дроповодства: вернуться в меню дроповодства и сбросить картинку."""
-    await set_main_photo(redis, callback.message.bot, callback.message.chat.id, "assets/images/main.jpg")
-
-    drops_items = get_text("guides.items.drops.items")
-    builder = InlineKeyboardBuilder()
-    for sub_key, item in drops_items.items():
-        builder.button(
-            text=item["title"],
-            callback_data=f"guides:drops:{sub_key}",
-        )
-    builder.adjust(1)
-    # Из дроповодства «Назад» ведет к списку всех гайдов
-    builder.attach(nav_row(back_cb="nav:guides"))
-    await edit_text_or_caption(callback.message, "📬 Дроповодство", builder.as_markup())
+async def nav_drops(callback: CallbackQuery) -> None:
+    await _render_drops_menu(callback, replace_media=True)
     await callback.answer()
     

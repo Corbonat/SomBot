@@ -14,25 +14,46 @@ class BidAsk(NamedTuple):
     ask: Decimal
 
 
+def _decimal_from(value: Optional[Decimal | float | str]) -> Optional[Decimal]:
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        return value
+    try:
+        return Decimal(str(value))
+    except Exception:
+        return None
+
+
+def _format_currency(value: Decimal) -> str:
+    return f"{value:.2f}".replace(".", ",")
+
+
+def _source_name(payload: RatePayload) -> str:
+    mapping = {
+        "rapira": "Rapira",
+        "bybit": "Bybit",
+        "grinex": "Grinex",
+    }
+    return mapping.get(payload.source.value, payload.source.value.capitalize())
+
+
 def format_rate(payload: RatePayload) -> str:
-    updated_at = payload.updated_at.astimezone(timezone.utc).strftime("%H:%M:%S")
-    stale_flag = " (устарело)" if payload.stale else ""
-    geo = "" if payload.geo.value == "none" else f", Гео: {payload.geo.value}"
-    depth = f"; depth={payload.depth}" if payload.depth else ""
-    extras = ""
-    if payload.extras:
-        hidden_keys = {"note", "endpoint"}
-        visible = [
-            f"{key}: {value}"
-            for key, value in payload.extras.items()
-            if value is not None and key not in hidden_keys
-        ]
-        if visible:
-            extras = "\n" + "\n".join(visible)
+    ask = _decimal_from(payload.extras.get("ask")) if payload.extras else None
+    bid = _decimal_from(payload.extras.get("bid")) if payload.extras else None
+
+    buy_value = ask or payload.value
+    sell_value = bid or payload.value
+
+    updated_at = payload.updated_at.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+    source = _source_name(payload)
+
     return (
-        f"USDT/RUB = {payload.value:.2f}\n"
-        f"Источник: {payload.source.value}, Метод: {payload.method.value}, Режим: {payload.mode.value}{geo}{depth}\n"
-        f"Обновлено: {updated_at}{stale_flag}{extras}"
+        f"💱 {source}\n\n"
+        "Курс USDT/RUB\n\n"
+        f"Купить {_format_currency(buy_value)}\n\n"
+        f"Продать {_format_currency(sell_value)}\n\n"
+        f"🔄 Обновлено {updated_at}"
     )
 
 

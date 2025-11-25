@@ -9,12 +9,12 @@ from aiogram.types import CallbackQuery, Message
 
 from app.core.config import Settings
 from app.keyboards.common import nav_row
-from app.keyboards.rates import build_bybit_controls, build_rate_actions, build_sources_menu
+from app.keyboards.rates import build_rate_actions, build_sources_menu
 from app.rates.models import BybitMode, GeoOption, RateMethod, RateQuery, RateSource
 from app.rates.providers.bybit import BybitProvider
 from app.rates.service import RateService
 from app.utils.formatting import BidAsk, format_all_rates, format_rate
-from app.utils.telegram import edit_text_or_caption
+from app.utils.telegram import answer_with_preview, edit_text_or_caption
 from app.utils.texts import get_text
 
 router = Router(name="rates")
@@ -72,11 +72,11 @@ async def cmd_rate(message: Message, rate_service: RateService, settings: Settin
     try:
         query = _parse_command_args(args, settings)
     except ValueError as exc:
-        await message.answer(get_text("rates.errors.invalid"))
-        await message.answer(str(exc))
+        await answer_with_preview(message, get_text("rates.errors.invalid"))
+        await answer_with_preview(message, str(exc))
         return
     text = await _render_rate(query, rate_service, settings)
-    await message.answer(text)
+    await answer_with_preview(message, text)
 
 
 @router.message(Command("best"))
@@ -84,7 +84,7 @@ async def cmd_best(message: Message, rate_service: RateService, settings: Settin
     target = str(message.text or "").split()
     side = target[1] if len(target) > 1 else "bid"
     if side not in ("bid", "ask"):
-        await message.answer("Only bid/ask supported")
+        await answer_with_preview(message, "Only bid/ask supported")
         return
     method = RateMethod.BEST
     query = RateQuery(
@@ -94,7 +94,7 @@ async def cmd_best(message: Message, rate_service: RateService, settings: Settin
         mode=BybitMode(settings.bybit_mode),
     )
     text = await _render_rate(query, rate_service, settings)
-    await message.answer(text)
+    await answer_with_preview(message, text)
 
 
 async def _render_all_rates(
@@ -208,11 +208,7 @@ async def _show_bybit_card(
         mode=BybitMode(prefs["mode"]),
     )
     text = await _render_rate(query, rate_service, settings, force=force)
-    keyboard = build_bybit_controls(
-        method=query.method,
-        geo=query.geo,
-        mode=query.mode,
-    )
+    keyboard = build_rate_actions("rates:bybit")
     await edit_text_or_caption(callback.message, text, keyboard)
     await callback.answer()
 
@@ -225,6 +221,16 @@ async def bybit_menu(
     state: FSMContext,
 ) -> None:
     await _show_bybit_card(callback, rate_service, settings, state)
+
+
+@router.callback_query(lambda c: c.data == "rates:bybit:refresh")
+async def bybit_refresh(
+    callback: CallbackQuery,
+    rate_service: RateService,
+    settings: Settings,
+    state: FSMContext,
+) -> None:
+    await _show_bybit_card(callback, rate_service, settings, state, force=True)
 
 
 @router.callback_query(lambda c: c.data.startswith("rates:bybit:method:"))

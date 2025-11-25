@@ -1,6 +1,6 @@
 ﻿from __future__ import annotations
 
-from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
@@ -16,13 +16,3 @@ def single_back(callback: str = "nav:back") -> InlineKeyboardBuilder:
     builder = InlineKeyboardBuilder()
     builder.button(text="◀️ Назад", callback_data=callback)
     return builder
-
-
-def build_persistent_start_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="/start")]],
-        resize_keyboard=True,
-        is_persistent=True,
-        one_time_keyboard=False,
-        input_field_placeholder="Выберите команду…",
-    )

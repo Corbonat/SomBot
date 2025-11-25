@@ -9,7 +9,7 @@ from app.fsm.aml import AMLCheckState
 from app.keyboards.aml import build_aml_menu, build_aml_result
 from app.services.aml.service import AMLService
 from app.utils.texts import get_text
-from app.utils.telegram import edit_text_or_caption
+from app.utils.telegram import answer_with_preview, edit_text_or_caption
 
 router = Router(name="aml")
 
@@ -41,13 +41,14 @@ async def aml_process_address(message: Message, state: FSMContext, aml_service: 
     from app.keyboards.common import nav_row
     address = message.text.strip()
     await state.set_state(AMLCheckState.validating)
-    await message.answer(get_text("aml.form.validating"), reply_markup=nav_row().as_markup())
+    await answer_with_preview(message, get_text("aml.form.validating"), reply_markup=nav_row().as_markup())
     try:
         result = await aml_service.check_address(address)
     except Exception as exc:
         # Show error to the user and return to input state
         await state.set_state(AMLCheckState.input_address)
-        await message.answer(
+        await answer_with_preview(
+            message,
             f"Ошибка AML: {exc}\nВведите адрес ещё раз",
             reply_markup=nav_row().as_markup(),
         )
@@ -81,7 +82,7 @@ async def aml_process_address(message: Message, state: FSMContext, aml_service: 
     share = result.get("shareLink")
     if share:
         parts.append(f"🔗 <a href=\"{share}\">Share</a>")
-    await message.answer("\n".join(parts), reply_markup=build_aml_result())
+    await answer_with_preview(message, "\n".join(parts), reply_markup=build_aml_result())
 
 
 @router.callback_query(lambda c: c.data == "aml:result:export")

@@ -17,10 +17,16 @@ def build_lead_menu(locale: str = "ru") -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def build_lead_question_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="◀️ Назад", callback_data="lead:form:cancel")
+    return builder.as_markup()
+
+
 def build_lead_confirm() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="✅ Отправить", callback_data="lead:form:submit")
     builder.button(text="✏️ Исправить", callback_data="lead:form:restart")
+    builder.button(text="◀️ Назад", callback_data="lead:form:cancel")
     builder.adjust(1)
-    builder.attach(nav_row())
     return builder.as_markup()

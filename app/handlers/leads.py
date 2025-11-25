@@ -5,10 +5,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from app.fsm.lead import LeadFormState
-from app.keyboards.lead import build_lead_confirm
+from app.keyboards.lead import (
+    build_lead_confirm,
+    build_lead_menu,
+    build_lead_question_keyboard,
+)
 from app.services.leads.service import LeadRequest, LeadService
 from app.utils.texts import get_text
-from app.utils.telegram import edit_text_or_caption
+from app.utils.telegram import answer_with_preview, edit_text_or_caption
 
 router = Router(name="leads")
 
@@ -17,7 +21,12 @@ router = Router(name="leads")
 async def start_lead_form(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await state.set_state(LeadFormState.contact)
-    await edit_text_or_caption(callback.message, get_text("lead.form.contact"))
+    await edit_text_or_caption(
+        callback.message,
+        get_text("lead.form.contact"),
+        build_lead_question_keyboard(),
+        with_preview=False,
+    )
     await callback.answer()
 
 
@@ -25,14 +34,24 @@ async def start_lead_form(callback: CallbackQuery, state: FSMContext) -> None:
 async def process_contact(message: Message, state: FSMContext) -> None:
     await state.update_data(contact=message.text.strip())
     await state.set_state(LeadFormState.experience)
-    await message.answer(get_text("lead.form.experience"))
+    await answer_with_preview(
+        message,
+        get_text("lead.form.experience"),
+        reply_markup=build_lead_question_keyboard(),
+        with_preview=False,
+    )
 
 
 @router.message(LeadFormState.experience)
 async def process_experience(message: Message, state: FSMContext) -> None:
     await state.update_data(experience=message.text.strip())
     await state.set_state(LeadFormState.requisites)
-    await message.answer(get_text("lead.form.requisites"))
+    await answer_with_preview(
+        message,
+        get_text("lead.form.requisites"),
+        reply_markup=build_lead_question_keyboard(),
+        with_preview=False,
+    )
 
 
 @router.message(LeadFormState.requisites)
@@ -45,13 +64,23 @@ async def process_requisites(message: Message, state: FSMContext) -> None:
         experience=data.get("experience"),
         requisites=data.get("requisites"),
     )
-    await message.answer(summary, reply_markup=build_lead_confirm())
+    await answer_with_preview(
+        message,
+        summary,
+        reply_markup=build_lead_confirm(),
+        with_preview=False,
+    )
 
 
 @router.callback_query(lambda c: c.data == "lead:form:restart")
 async def restart_form(callback: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(LeadFormState.contact)
-    await edit_text_or_caption(callback.message, get_text("lead.form.contact"))
+    await edit_text_or_caption(
+        callback.message,
+        get_text("lead.form.contact"),
+        build_lead_question_keyboard(),
+        with_preview=False,
+    )
     await callback.answer()
 
 
@@ -66,6 +95,22 @@ async def submit_lead(callback: CallbackQuery, state: FSMContext, lead_service: 
         consent=True,
     )
     lead_id = await lead_service.create_lead(payload)
-    await edit_text_or_caption(callback.message, get_text("lead.form.done").format(id=lead_id))
+    await edit_text_or_caption(
+        callback.message,
+        get_text("lead.form.done").format(id=lead_id),
+        with_preview=False,
+    )
     await state.clear()
     await callback.answer()
+
+
+@router.callback_query(lambda c: c.data == "lead:form:cancel")
+async def cancel_lead_form(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await edit_text_or_caption(
+        callback.message,
+        get_text("lead.promo"),
+        build_lead_menu(),
+        replace_media=True,
+    )
+    await callback.answer("Опрос прерван")

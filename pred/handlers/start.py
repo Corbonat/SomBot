@@ -5,7 +5,6 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 from app.core.config import Settings
-from app.keyboards.common import build_persistent_start_keyboard
 from pred.keyboards.cta import build_cta
 
 
@@ -20,8 +19,6 @@ async def cmd_start(message: Message, settings: Settings) -> None:
         "— /predict — получить предсказание"
     )
     url = settings.academy_url or "https://t.me/"
-    # Устанавливаем постоянную Reply-клавиатуру с /start
-    await message.answer("Клавиатура активирована.", reply_markup=build_persistent_start_keyboard())
     await message.answer(text, reply_markup=build_cta(url))
 
 

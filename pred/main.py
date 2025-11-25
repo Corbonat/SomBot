@@ -40,18 +40,6 @@ async def run() -> None:
     bot = create_bot(settings.pred_bot_token.get_secret_value())
     bot.default = DefaultBotProperties(parse_mode=ParseMode.HTML)
 
-    # Register commands so /start is visible in the client menu
-    try:
-        await bot.set_my_commands(
-            commands=[
-                BotCommand(command="start", description="Запуск бота"),
-                BotCommand(command="predict", description="Получить предсказание"),
-            ],
-            scope=BotCommandScopeDefault(),
-            language_code="ru",
-        )
-    except Exception:
-        pass
 
     dp = await build_dispatcher(settings)
 
