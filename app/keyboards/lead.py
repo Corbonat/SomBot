@@ -30,3 +30,9 @@ def build_lead_confirm() -> InlineKeyboardMarkup:
     builder.button(text="◀️ Назад", callback_data="lead:form:cancel")
     builder.adjust(1)
     return builder.as_markup()
+
+
+def build_lead_done_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🏠 В главное меню", callback_data="nav:home")
+    return builder.as_markup()

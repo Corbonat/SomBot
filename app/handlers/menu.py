@@ -196,7 +196,12 @@ async def show_guide_item(callback: CallbackQuery) -> None:
             except KeyError:
                 text = get_text("common.coming_soon")
 
-            await _send_guide(callback, text, back_cb="nav:drops")
+            try:
+                file_path = get_text(f"guides.items.drops.items.{sub_key}.file")
+            except KeyError:
+                file_path = None
+
+            await _send_guide(callback, text, file_path=file_path, back_cb="nav:drops")
             return
 
         await callback.answer("Раздел не найден", show_alert=True)

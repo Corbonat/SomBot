@@ -13,7 +13,7 @@ from app.keyboards.rates import build_rate_actions, build_sources_menu
 from app.rates.models import BybitMode, GeoOption, RateMethod, RateQuery, RateSource
 from app.rates.providers.bybit import BybitProvider
 from app.rates.service import RateService
-from app.utils.formatting import BidAsk, format_all_rates, format_rate
+from app.utils.formatting import BidAsk, format_all_rates, format_mosca_pair, format_rate
 from app.utils.telegram import answer_with_preview, edit_text_or_caption
 from app.utils.texts import get_text
 
@@ -151,22 +151,29 @@ async def _render_all_rates(
     except Exception:
         pass
     
-    # Получаем bid и ask от Bybit
-    try:
-        bybit_query = RateQuery(
-            source=RateSource.BYBIT,
-            method=RateMethod.BEST,
-            geo=GeoOption(settings.default_geo),
-            mode=BybitMode.ORDERBOOK,
-        )
-        provider = rate_service.providers.get(RateSource.BYBIT)
-        if provider and isinstance(provider, BybitProvider):
-            bid, ask = await provider.fetch_bid_ask(bybit_query)
-            mosca_pair = BidAsk(bid=bid, ask=ask)
-    except Exception:
-        pass
+    mosca_pair = await _fetch_mosca_pair(rate_service, settings)
     
     return format_all_rates(grinex_rate, rapira_rate, mosca_pair, bybit_mid, bybit_p2p)
+
+
+async def _fetch_mosca_pair(rate_service: RateService, settings: Settings) -> BidAsk | None:
+    """
+    Берем bid/ask из ордербука Bybit и представляем как пару Mosca.
+    """
+    provider = rate_service.providers.get(RateSource.BYBIT)
+    if not provider or not isinstance(provider, BybitProvider):
+        return None
+    query = RateQuery(
+        source=RateSource.BYBIT,
+        method=RateMethod.BEST,
+        geo=GeoOption(settings.default_geo),
+        mode=BybitMode.ORDERBOOK,
+    )
+    try:
+        bid, ask = await provider.fetch_bid_ask(query)
+    except Exception:
+        return None
+    return BidAsk(bid=bid, ask=ask)
 
 
 @router.callback_query(lambda c: c.data == "rates")
@@ -309,4 +316,19 @@ async def grinex_actions(
     )
     text = await _render_rate(query, rate_service, settings, force=force)
     await edit_text_or_caption(callback.message, text, build_rate_actions("rates:grinex"))
+    await callback.answer()
+
+
+@router.callback_query(lambda c: c.data.startswith("rates:mosca"))
+async def mosca_actions(
+    callback: CallbackQuery,
+    rate_service: RateService,
+    settings: Settings,
+) -> None:
+    pair = await _fetch_mosca_pair(rate_service, settings)
+    if pair:
+        text = format_mosca_pair(pair)
+    else:
+        text = "Данные Mosca недоступны. Попробуйте обновить позже."
+    await edit_text_or_caption(callback.message, text, build_rate_actions("rates:mosca"))
     await callback.answer()

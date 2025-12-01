@@ -55,7 +55,9 @@ async def shutdown(dp: Dispatcher, bot: Bot) -> None:
 
     await http_client.aclose()
     await dp.storage.close()
-    await dp.storage.wait_closed()
+    wait_closed = getattr(dp.storage, "wait_closed", None)
+    if callable(wait_closed):
+        await wait_closed()
     await close_redis(redis)
     await shutdown_bot(bot)
 

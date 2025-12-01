@@ -13,6 +13,7 @@ def build_sources_menu(locale: str = "ru") -> InlineKeyboardMarkup:
     builder.button(text=texts["rapira"], callback_data="rates:rapira:show")
     builder.button(text=texts["bybit"], callback_data="rates:bybit:menu")
     builder.button(text=texts["grinex"], callback_data="rates:grinex:show")
+    builder.button(text=texts["mosca"], callback_data="rates:mosca:show")
     builder.adjust(1)
     builder.attach(nav_row(back_cb="nav:home", home_cb="nav:home"))
     return builder.as_markup()

@@ -7,6 +7,7 @@ from aiogram.types import CallbackQuery, Message
 from app.fsm.lead import LeadFormState
 from app.keyboards.lead import (
     build_lead_confirm,
+    build_lead_done_keyboard,
     build_lead_menu,
     build_lead_question_keyboard,
 )
@@ -94,10 +95,11 @@ async def submit_lead(callback: CallbackQuery, state: FSMContext, lead_service: 
         sber_requisites_count=int(str(data.get("requisites", "0")) or 0),
         consent=True,
     )
-    lead_id = await lead_service.create_lead(payload)
+    await lead_service.create_lead(payload)
     await edit_text_or_caption(
         callback.message,
-        get_text("lead.form.done").format(id=lead_id),
+        get_text("lead.form.done"),
+        build_lead_done_keyboard(),
         with_preview=False,
     )
     await state.clear()

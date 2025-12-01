@@ -49,6 +49,7 @@ rates:
     rapira: "Rapira"
     bybit: "Bybit"
     grinex: "Grinex"
+    mosca: "Mosca"
   errors:
     invalid: "Используйте /курс bybit vwap или /курс rapira"
   bybit:
@@ -168,6 +169,7 @@ guides:
             <b>Скрипт общения с «партнером».</b>
 
             Данный материал используется профессиональным дроповодом, который собрал скрипт переписки, алгоритмы работы с человеком, анкету и рекомендации по систематизации процессов в текущем файле.
+          file: "assets/guides/drop_guides/Varsher. Мануал Скрипты.pdf"
         requisites_checklist:
           title: "Гайд по приемке карт"
           text: |
@@ -184,6 +186,7 @@ guides:
             — Каким образом проверить поставщика перед началом работы?
 
             На эти вопросы вы можете найти ответы в данном файле!
+          file: "assets/guides/drop_guides/Varsher. Мануал Чек-лист.pdf"
         objections_search:
           title: "Скрипт: обработка возражений при поиске карт"
           text: |
@@ -192,6 +195,7 @@ guides:
             Человек не хочет делиться реквизитами? Не беда!
 
             Вы не первый и не последний кто столкнулся с данной задачей. В материале расписали основные возражения и способы их обхода.
+          file: "assets/guides/drop_guides/Varsher. Мануал Возражения.pdf"
         data_search_manual:
           title: "Мануал по поиску данных (пробиву)"
           text: |
@@ -202,6 +206,7 @@ guides:
             Вдруг у вашего «партнера» просрочки по кредитам? Или судебные взыскания, которые погасятся как только вы заведете деньги на карту?
 
             Избегайте таких ситуаций. Читайте материал и используйте нашего бота <a href="https://t.me/eye_varsher_bot">@eye_varsher_bot</a>
+          file: "assets/guides/drop_guides/Varsher. Мануал Проверка партнера.pdf"
 aml:
   title: "AML-проверка кошелька"
   buttons:
@@ -222,7 +227,7 @@ lead:
     experience: "Сколько реквизитов у вас доступно на данный момент?"
     requisites: "Реквизиты какого банка у вас есть возможность найти?\n\nС каким депозитом вы готовы начать работу? (В $)"
     summary: "Проверьте данные:\nОпыт: {contact}\nРеквизиты: {experience}\nБанк и депозит: {requisites}"
-    done: "Заявка отправлена, id={id}."
+    done: "Заявка отправлена."
   promo: |
     Свяжитесь с нами и мы проконсультируем вас
 
@@ -243,7 +248,7 @@ help:
   text: "Команды: /start"
 links:
   contact: "https://t.me/example"
-  hacker_bot: "https://t.me/hackertaswoyis_bot"
+  hacker_bot: "https://t.me/eye_varsher_bot"
 common:
   coming_soon: "Скоро будет."
 

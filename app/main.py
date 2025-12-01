@@ -108,7 +108,9 @@ async def shutdown(dp: Dispatcher, bot: Bot) -> None:
     await close_redis(redis)
     await engine.dispose()
     await dp.storage.close()
-    await dp.storage.wait_closed()
+    wait_closed = getattr(dp.storage, "wait_closed", None)
+    if callable(wait_closed):
+        await wait_closed()
     await shutdown_bot(bot)
 
 

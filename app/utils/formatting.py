@@ -100,3 +100,18 @@ def format_all_rates(
         lines.append("Данные пока отсутствуют (нужен запрос к P2P API).")
 
     return "\n".join(lines).strip()
+
+
+def format_mosca_pair(pair: BidAsk) -> str:
+    """
+    Возвращает карточку с курсами Mosca (buy/sell).
+    Основана на best bid/ask из ордербука Bybit.
+    """
+    ask = f"{pair.ask:.2f}"
+    bid = f"{pair.bid:.2f}"
+    return (
+        "📊 Mosca\n\n"
+        f"Купить USDT — {ask}₽\n"
+        f"Продать USDT — {bid}₽\n\n"
+        "Данные получены из ордербука Bybit."
+    )
